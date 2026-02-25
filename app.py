@@ -43,9 +43,9 @@ st.sidebar.title("Filters")
 
 dashboard = st.sidebar.radio(
     "Select Dashboard",
-    ["Executive Dashboard",
-     "Coach Dashboard",
-     "Scouting Dashboard"]
+    ["Squad Investment Overview",
+     "Performance Fitness Overview",
+     "Talent Scouting Insights"]
 )
 
 team_filter = st.sidebar.multiselect(
@@ -76,11 +76,10 @@ df = df[
 # ============================================================
 # EXECUTIVE DASHBOARD
 # ============================================================
-if dashboard == "Executive Dashboard":
+if dashboard == "Squad Investment Overview":
 
-    st.title("🏢 Club Management Dashboard")
+    st.title("🏢 Squad Investment Overview")
 
-    # KPI ROW
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Market Value (M)", f"{df['market_value_million'].sum():,.1f}")
     col2.metric("Star Players %", f"{df['star_player'].mean()*100:.1f}%")
@@ -91,7 +90,6 @@ if dashboard == "Executive Dashboard":
 
     col5, col6 = st.columns(2)
 
-    # Market Value by Experience
     exp_val = df.groupby("experience_level")["market_value_million"].mean().reset_index()
     fig1 = px.bar(exp_val,
                   x="experience_level",
@@ -101,7 +99,6 @@ if dashboard == "Executive Dashboard":
                   title="Market Value by Experience Level")
     col5.plotly_chart(fig1, use_container_width=True)
 
-    # Star Distribution Pie (Safe Mapping)
     star_dist = df["star_player"].replace(
         {True:"Star Player", False:"Non-Star Player",
          1:"Star Player", 0:"Non-Star Player"}
@@ -116,44 +113,49 @@ if dashboard == "Executive Dashboard":
 
     col7, col8 = st.columns(2)
 
-    # Age Distribution
-    age_dist = df["age"].value_counts().sort_index().reset_index()
-    age_dist.columns = ["Age", "Number of Players"]
-    fig3 = px.bar(age_dist,
-                  x="Age",
-                  y="Number of Players",
-                  text_auto=True,
-                  title="Age Distribution")
+    # Age Distribution (%)
+    age_dist = df["age"].value_counts(normalize=True).sort_index() * 100
+    age_dist = age_dist.reset_index()
+    age_dist.columns = ["Age", "Player Distribution (%)"]
+
+    fig3 = px.bar(
+        age_dist,
+        x="Age",
+        y="Player Distribution (%)",
+        text_auto=".1f",
+        title="Age Distribution (%)"
+    )
     col7.plotly_chart(fig3, use_container_width=True)
 
-    # Contract Risk
-    risk_dist = df["contract_risk"].value_counts().reset_index()
-    risk_dist.columns = ["Risk Level", "Number of Players"]
-    fig4 = px.bar(risk_dist,
-                  x="Risk Level",
-                  y="Number of Players",
-                  text_auto=True,
-                  title="Contract Risk Distribution")
+    # Contract Risk Distribution (%)
+    risk_dist = df["contract_risk"].value_counts(normalize=True) * 100
+    risk_dist = risk_dist.reset_index()
+    risk_dist.columns = ["Risk Level", "Player Distribution (%)"]
+
+    fig4 = px.bar(
+        risk_dist,
+        x="Risk Level",
+        y="Player Distribution (%)",
+        text_auto=".1f",
+        title="Contract Risk Distribution (%)"
+    )
     col8.plotly_chart(fig4, use_container_width=True)
 
 # ============================================================
 # COACH DASHBOARD
 # ============================================================
-elif dashboard == "Coach Dashboard":
+elif dashboard == "Performance Fitness Overview":
 
-    st.title("🏃 Performance & Coaching Dashboard")
+    st.title("🏃 Performance Fitness Overview")
 
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric("Goals per Match",
                 f"{(df['goals_scored'].sum()/df['matches_played'].sum()):.2f}")
-
     col2.metric("Avg Pass Accuracy",
                 f"{df['pass_accuracy'].mean():.1f}%")
-
     col3.metric("Injury Rate",
                 f"{df['injury_prone'].mean()*100:.1f}%")
-
     col4.metric("Fitness Score",
                 f"{(df['stamina'].mean()+df['agility'].mean()):.1f}")
 
@@ -161,7 +163,6 @@ elif dashboard == "Coach Dashboard":
 
     col5, col6 = st.columns(2)
 
-    # Goals by Position
     goals_pos = df.groupby("position")["goals_scored"].mean().reset_index()
     fig5 = px.bar(goals_pos,
                   x="position",
@@ -171,7 +172,6 @@ elif dashboard == "Coach Dashboard":
                   title="Average Goals by Position")
     col5.plotly_chart(fig5, use_container_width=True)
 
-    # Assists by Accuracy Band
     df["accuracy_band"] = pd.cut(
         df["pass_accuracy"],
         bins=[50, 60, 70, 80, 90, 100],
@@ -188,7 +188,6 @@ elif dashboard == "Coach Dashboard":
 
     col7, col8 = st.columns(2)
 
-    # Availability Pie
     injury = df["injury_prone"].replace(
         {True:"Injury Prone", False:"Available",
          1:"Injury Prone", 0:"Available"}
@@ -201,21 +200,22 @@ elif dashboard == "Coach Dashboard":
                   title="Player Availability")
     col7.plotly_chart(fig7, use_container_width=True)
 
-    # Matches Played Distribution
     matches = df["matches_played"].value_counts().sort_index().reset_index()
     matches.columns = ["Matches Played", "Number of Players"]
+
     fig8 = px.line(matches,
                    x="Matches Played",
                    y="Number of Players",
                    markers=True,
                    title="Matches Played Distribution")
     col8.plotly_chart(fig8, use_container_width=True)
+
 # ============================================================
 # SCOUTING DASHBOARD
 # ============================================================
 else:
 
-    st.title("🔎 Scouting & Talent Dashboard")
+    st.title("🔎 Talent Scouting Insights")
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -223,10 +223,8 @@ else:
 
     col1.metric("Star Potential %",
                 f"{young['star_player'].mean()*100:.1f}%")
-
     col2.metric("Avg Sprint Speed",
                 f"{df['sprint_speed'].mean():.1f}")
-
     col3.metric("Avg Jump Height",
                 f"{df['jump_height_cm'].mean():.1f}")
 
@@ -240,30 +238,32 @@ else:
     # ---------------- Row 1 ----------------
     col5, col6 = st.columns(2)
 
-    # 1️⃣ Star Yield by Nationality (%)
-    nat = df.groupby("nationality")["star_player"].mean().reset_index()
-    nat["star_player"] = nat["star_player"] * 100
+    # 1️⃣ Star Yield by Nationality (% of total star players)
+    stars_only = df[df["star_player"] == 1]
+
+    nat = stars_only["nationality"].value_counts(normalize=True) * 100
+    nat = nat.reset_index()
+    nat.columns = ["nationality", "Star Player Share (%)"]
 
     fig9 = px.bar(
         nat,
         x="nationality",
-        y="star_player",
-        text_auto=".1f",
-        labels={"star_player":"Star Percentage (%)"},
+        y="Star Player Share (%)",
+        text_auto=".2f",
         title="Star Yield by Nationality (%)"
     )
     col5.plotly_chart(fig9, use_container_width=True)
 
-    # 2️⃣ Experience vs Star Probability (%)
-    exp_star = df.groupby("experience_level")["star_player"].mean().reset_index()
-    exp_star["star_player"] = exp_star["star_player"] * 100
+    # 2️⃣ Experience Level vs Star Probability (%)
+    exp_star = df.groupby("experience_level")["star_player"].mean() * 100
+    exp_star = exp_star.reset_index()
+    exp_star.columns = ["Experience Level", "Star Probability (%)"]
 
     fig10 = px.bar(
         exp_star,
-        x="experience_level",
-        y="star_player",
+        x="Experience Level",
+        y="Star Probability (%)",
         text_auto=".1f",
-        labels={"star_player":"Star Probability (%)"},
         title="Experience Level vs Star Probability (%)"
     )
     col6.plotly_chart(fig10, use_container_width=True)
@@ -304,6 +304,5 @@ else:
         title="Market Value Distribution (%)"
     )
     col8.plotly_chart(fig12, use_container_width=True)
-    
 st.markdown("---")
 st.caption("Sports Analytics Platform | Built with Streamlit")
