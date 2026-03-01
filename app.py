@@ -9,7 +9,6 @@ st.set_page_config(page_title="SportsProFC Analytics", page_icon="⚽", layout="
 # --- LOAD ASSETS ---
 @st.cache_resource
 def load_model_objects():
-    # These must match the filenames you saved in your folder
     model = joblib.load('SportsProFC_Model.pkl')
     scaler = joblib.load('SportsProFC_Scaler.pkl')
     return model, scaler
@@ -22,10 +21,9 @@ except Exception as e:
 
 # --- USER INTERFACE ---
 st.title("🏆 SportsProFC Star Performance Predictor")
-st.markdown("Enter the key athlete performance metrics to predict 'Star Player' status.")
+st.markdown("Enter the top 10 performance metrics below to predict if an athlete is a **Star Player**.")
 
 with st.form("prediction_form"):
-    st.subheader("Top Contributing Features")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -46,27 +44,48 @@ with st.form("prediction_form"):
 
 # --- PREDICTION LOGIC ---
 if submit:
-    # 1. Create a dictionary with EXACT lowercase names from training
-    # Even if you use fewer features in the UI, the dataframe must match the scaler's 'fit' structure.
-    # We map the inputs to the feature names identified in the notebook.
-    input_data = pd.DataFrame([{
-        'minutes_played': minutes_played,
-        'goals_scored': goals_scored,
-        'stamina': stamina,
+    # 1. Create a dictionary with ALL 27 columns from your notebook
+    # We fill the 'Top 10' with user input and the rest with neutral defaults (0)
+    full_features = {
+        'age': 25, 'height_cm': 180, 'weight_kg': 75, 'nationality': 0, 'position': 0,
+        'sprint_speed': sprint_speed, 
+        'stamina': stamina, 
+        'strength': strength, 
+        'agility': agility, 
+        'jump_height_cm': 50,
+        'injury_prone': 0, 
+        'matches_played': matches_played, 
+        'goals_scored': goals_scored, 
         'assists': assists,
+        'yellow_cards': 0, 'red_cards': 0, 
+        'minutes_played': minutes_played, 
         'pass_accuracy': pass_accuracy,
-        'market_value_million': market_value,
-        'strength': strength,
-        'sprint_speed': sprint_speed,
-        'agility': agility,
-        'matches_played': matches_played
-    }])
+        'tackles': 0, 'saves': 0, 'star_player': 0, 'team': 0, 'contract_years': 2,
+        'market_value_million': market_value, 
+        'experience_level': 5, 'star_probability': 0.5,
+        'predicted_star_label': 0
+    }
+
+    # 2. Convert to DataFrame and ensure the COLUMN ORDER is exactly what the model expects
+    # The order must match: ['age', 'height_cm', ..., 'predicted_star_label']
+    input_df = pd.DataFrame([full_features])
+    
+    # List of columns in the exact order they appeared in your notebook's X_train
+    correct_order = [
+        'age', 'height_cm', 'weight_kg', 'nationality', 'position',
+        'sprint_speed', 'stamina', 'strength', 'agility', 'jump_height_cm',
+        'injury_prone', 'matches_played', 'goals_scored', 'assists',
+        'yellow_cards', 'red_cards', 'minutes_played', 'pass_accuracy',
+        'tackles', 'saves', 'star_player', 'team', 'contract_years',
+        'market_value_million', 'experience_level', 'star_probability',
+        'predicted_star_label'
+    ]
+    
+    input_df = input_df[correct_order]
 
     try:
-        # 2. Scale the input data
-        input_scaled = scaler.transform(input_data)
-
-        # 3. Predict using the Gradient Boosting model
+        # 3. Scale and Predict
+        input_scaled = scaler.transform(input_df)
         prediction = best_gb_model.predict(input_scaled)
         probability = best_gb_model.predict_proba(input_scaled)
 
@@ -74,14 +93,13 @@ if submit:
         st.divider()
         confidence = np.max(probability) * 100
         
-        if prediction[0] == 1:
+        if prediction[0] == 1 or prediction[0] == True:
+            st.balloons()
             st.success(f"### Result: STAR PLAYER ✅")
             st.write(f"Confidence Level: **{confidence:.2f}%**")
-            st.balloons()
         else:
             st.error(f"### Result: REGULAR PLAYER ❌")
             st.write(f"Confidence Level: **{confidence:.2f}%**")
 
     except Exception as e:
         st.error(f"Prediction Error: {e}")
-        st.info("Check if your Scaler was trained with more features than these 10. If so, you must include all training columns in the dataframe.")
