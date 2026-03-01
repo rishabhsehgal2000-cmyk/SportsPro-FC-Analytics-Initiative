@@ -21,7 +21,7 @@ except Exception as e:
 
 # --- USER INTERFACE ---
 st.title("🏆 SportsProFC Star Performance Predictor")
-st.markdown("Enter the top 10 performance metrics below to predict if an athlete is a **Star Player**.")
+st.markdown("Enter the athlete's performance metrics below to predict **Star Player** status.")
 
 with st.form("prediction_form"):
     col1, col2 = st.columns(2)
@@ -44,8 +44,8 @@ with st.form("prediction_form"):
 
 # --- PREDICTION LOGIC ---
 if submit:
-    # 1. Create a dictionary with ALL 27 columns from your notebook
-    # We fill the 'Top 10' with user input and the rest with neutral defaults (0)
+    # 1. Create the dictionary excluding 'star_player', 'star_probability', and 'predicted_star_label'
+    # These are filled with neutral defaults so the Scaler sees the correct number of features
     full_features = {
         'age': 25, 'height_cm': 180, 'weight_kg': 75, 'nationality': 0, 'position': 0,
         'sprint_speed': sprint_speed, 
@@ -60,27 +60,24 @@ if submit:
         'yellow_cards': 0, 'red_cards': 0, 
         'minutes_played': minutes_played, 
         'pass_accuracy': pass_accuracy,
-        'tackles': 0, 'saves': 0, 'star_player': 0, 'team': 0, 'contract_years': 2,
+        'tackles': 0, 'saves': 0, 'team': 0, 'contract_years': 2,
         'market_value_million': market_value, 
-        'experience_level': 5, 'star_probability': 0.5,
-        'predicted_star_label': 0
+        'experience_level': 5
     }
 
-    # 2. Convert to DataFrame and ensure the COLUMN ORDER is exactly what the model expects
-    # The order must match: ['age', 'height_cm', ..., 'predicted_star_label']
-    input_df = pd.DataFrame([full_features])
-    
-    # List of columns in the exact order they appeared in your notebook's X_train
+    # 2. Define the CORRECT ORDER (the 24 features the model was fit on)
+    # Note: We have removed the 3 columns causing the 'unseen' error
     correct_order = [
         'age', 'height_cm', 'weight_kg', 'nationality', 'position',
         'sprint_speed', 'stamina', 'strength', 'agility', 'jump_height_cm',
         'injury_prone', 'matches_played', 'goals_scored', 'assists',
         'yellow_cards', 'red_cards', 'minutes_played', 'pass_accuracy',
-        'tackles', 'saves', 'star_player', 'team', 'contract_years',
-        'market_value_million', 'experience_level', 'star_probability',
-        'predicted_star_label'
+        'tackles', 'saves', 'team', 'contract_years',
+        'market_value_million', 'experience_level'
     ]
-    
+
+    # Convert to DataFrame and reorder columns
+    input_df = pd.DataFrame([full_features])
     input_df = input_df[correct_order]
 
     try:
@@ -93,13 +90,14 @@ if submit:
         st.divider()
         confidence = np.max(probability) * 100
         
-        if prediction[0] == 1 or prediction[0] == True:
+        if prediction[0] == 1 or str(prediction[0]) == 'True':
             st.balloons()
             st.success(f"### Result: STAR PLAYER ✅")
-            st.write(f"Confidence Level: **{confidence:.2f}%**")
+            st.write(f"The model is **{confidence:.2f}%** confident.")
         else:
             st.error(f"### Result: REGULAR PLAYER ❌")
-            st.write(f"Confidence Level: **{confidence:.2f}%**")
+            st.write(f"The model is **{confidence:.2f}%** confident.")
 
     except Exception as e:
         st.error(f"Prediction Error: {e}")
+        st.info("Technical Detail: The model expected specific features. Ensure your .pkl files match the current feature list.")
