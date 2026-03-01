@@ -124,7 +124,7 @@ if dashboard == "Squad Investment":
     
     # Custom Styled Metrics
     m1, m2, m3, m4 = st.columns(4)
-    with m1: st.metric("Market Value", f"${df['market_value_million'].sum():,.1f}M")
+    with m1: st.metric("Market Value", f"${df['market_value_million'].sum():,.1f}")
     with m2: st.metric("Star Ratio", f"{df['star_player'].mean()*100:.1f}%")
     with m3: st.metric("Avg Contract", f"{df['contract_years'].mean():.1f} Yrs")
     with m4: st.metric("Avg Age", f"{df['age'].mean():.1f}")
@@ -144,10 +144,10 @@ if dashboard == "Squad Investment":
     c2.plotly_chart(fig2, use_container_width=True)
 
     c3, c4 = st.columns(2)
-    age_dist = (df["age"].value_counts(normalize=True).sort_index() * 100).reset_index(); age_dist.columns = ["Age", "Dist"]
+    age_dist = (df["age"].value_counts(normalize=True).sort_index() * 100).reset_index(); age_dist.columns = ["Age", "Age Distribution"]
     c3.plotly_chart(px.bar(age_dist, x="Age", y="Dist", text_auto=".1f", title="Age Demographics (%)", color_discrete_sequence=[COLORS[2]]), use_container_width=True)
     
-    risk_dist = (df["contract_risk"].value_counts(normalize=True) * 100).reset_index(); risk_dist.columns = ["Risk", "Dist"]
+    risk_dist = (df["contract_risk"].value_counts(normalize=True) * 100).reset_index(); risk_dist.columns = ["Risk", "Distribution"]
     c4.plotly_chart(px.bar(risk_dist, x="Risk", y="Dist", text_auto=".1f", title="Contractual Risk (%)", color_discrete_sequence=[COLORS[4]]), use_container_width=True)
 
 # ============================================================
@@ -236,4 +236,5 @@ else:
                     st.balloons()
                 else: 
                     st.error("❌ CLASSIFIED AS: **REGULAR SQUAD PLAYER**")
+
 
