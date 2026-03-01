@@ -9,12 +9,9 @@ import numpy as np
 # ---------------------------------------------------
 st.set_page_config(page_title="SportsProFC Analytics Platform", page_icon="⚽", layout="wide")
 
-# Light Grey Background Styling
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #f5f5f5;
-    }
+    .stApp { background-color: #f5f5f5; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -23,7 +20,6 @@ st.markdown("""
 # ---------------------------------------------------
 @st.cache_data
 def load_data():
-    # Ensure these CSV files are in your GitHub repository
     players = pd.read_csv("players_new.csv")
     performance = pd.read_csv("performance_new.csv")
     contracts = pd.read_csv("contracts_new.csv")
@@ -31,16 +27,10 @@ def load_data():
     df = performance.merge(players, on="player_id").merge(contracts, on="player_id")
     df = df[df["is_valid"] == "Valid"]
     
-    # Pre-process labels for charts
+    # Pre-process labels
     df["star_label"] = df["star_player"].map({True: "Star Player", False: "Regular Player", 1: "Star Player", 0: "Regular Player"})
     df["injury_label"] = df["injury_prone"].map({True: "Injury Prone", False: "Available", 1: "Injury Prone", 0: "Available"})
-    
-    # Create Contract Risk
-    df["contract_risk"] = pd.cut(
-        df["contract_years"],
-        bins=[-1, 1, 3, 10],
-        labels=["High Risk", "Medium Risk", "Low Risk"]
-    )
+    df["contract_risk"] = pd.cut(df["contract_years"], bins=[-1, 1, 3, 10], labels=["High Risk", "Medium Risk", "Low Risk"])
     return df
 
 @st.cache_resource
@@ -55,160 +45,125 @@ def load_ml_model():
 df_raw = load_data()
 
 # ---------------------------------------------------
-# SIDEBAR NAVIGATION
+# SIDEBAR
 # ---------------------------------------------------
-st.sidebar.title("Navigation & Filters")
+st.sidebar.title("Navigation")
+dashboard = st.sidebar.radio("Select Dashboard", 
+    ["Squad Investment Overview", "Performance Fitness Overview", "Talent Scouting Insights", "Star Player Predictor (ML)"])
 
-dashboard = st.sidebar.radio(
-    "Select Dashboard",
-    ["Squad Investment Overview",
-     "Performance Fitness Overview",
-     "Talent Scouting Insights",
-     "Star Player Predictor (ML)"]
-)
-
-# Show data filters only for analytical dashboards
 if dashboard != "Star Player Predictor (ML)":
-    team_filter = st.sidebar.multiselect("Team", df_raw["team"].unique(), default=df_raw["team"].unique())
-    position_filter = st.sidebar.multiselect("Position", df_raw["position"].unique(), default=df_raw["position"].unique())
-    age_filter = st.sidebar.slider("Age Range", int(df_raw["age"].min()), int(df_raw["age"].max()), (18, 40))
-
-    df = df_raw[
-        (df_raw["team"].isin(team_filter)) &
-        (df_raw["position"].isin(position_filter)) &
-        (df_raw["age"].between(age_filter[0], age_filter[1]))
-    ]
+    team_f = st.sidebar.multiselect("Team", df_raw["team"].unique(), default=df_raw["team"].unique())
+    pos_f = st.sidebar.multiselect("Position", df_raw["position"].unique(), default=df_raw["position"].unique())
+    age_f = st.sidebar.slider("Age Range", int(df_raw["age"].min()), int(df_raw["age"].max()), (18, 40))
+    df = df_raw[(df_raw["team"].isin(team_f)) & (df_raw["position"].isin(pos_f)) & (df_raw["age"].between(age_f[0], age_f[1]))]
 
 # ============================================================
-# DASHBOARD 1: SQUAD INVESTMENT
+# DASHBOARD 1: SQUAD INVESTMENT (4 Charts Restored)
 # ============================================================
 if dashboard == "Squad Investment Overview":
     st.title("🏢 Squad Investment Overview")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Market Value (M)", f"{df['market_value_million'].sum():,.1f}")
-    col2.metric("Star Players %", f"{df['star_player'].mean()*100:.1f}%")
-    col3.metric("Avg Contract Years", f"{df['contract_years'].mean():.1f}")
-    col4.metric("Average Age", f"{df['age'].mean():.1f}")
-    
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Market Value (M)", f"{df['market_value_million'].sum():,.1f}")
+    m2.metric("Star Players %", f"{df['star_player'].mean()*100:.1f}%")
+    m3.metric("Avg Contract Years", f"{df['contract_years'].mean():.1f}")
+    m4.metric("Average Age", f"{df['age'].mean():.1f}")
+
     st.markdown("---")
-    
     c1, c2 = st.columns(2)
-    
-    # Bar Chart: Experience vs Value
+    # Chart 1: Market Value by Experience
     exp_val = df.groupby("experience_level")["market_value_million"].mean().reset_index()
-    fig1 = px.bar(exp_val, x="experience_level", y="market_value_million", title="Avg Market Value by Experience")
-    c1.plotly_chart(fig1, use_container_width=True)
-    
-    # Fix for ValueError in Pie Chart
-    star_dist = df["star_label"].value_counts().reset_index()
-    star_dist.columns = ["Status", "Count"] # Explicitly renaming columns
-    fig2 = px.pie(star_dist, names="Status", values="Count", title="Star Distribution", hole=0.4)
-    c2.plotly_chart(fig2, use_container_width=True)
+    c1.plotly_chart(px.bar(exp_val, x="experience_level", y="market_value_million", text_auto=".2f", title="Avg Market Value by Experience"), use_container_width=True)
+    # Chart 2: Star Distribution
+    star_dist = df["star_label"].value_counts().reset_index(); star_dist.columns = ["Status", "Count"]
+    c2.plotly_chart(px.pie(star_dist, names="Status", values="Count", title="Star vs Non-Star Distribution"), use_container_width=True)
+
+    c3, c4 = st.columns(2)
+    # Chart 3: Age Distribution
+    age_dist = (df["age"].value_counts(normalize=True).sort_index() * 100).reset_index(); age_dist.columns = ["Age", "Dist"]
+    c3.plotly_chart(px.bar(age_dist, x="Age", y="Dist", text_auto=".1f", title="Age Distribution (%)"), use_container_width=True)
+    # Chart 4: Contract Risk
+    risk_dist = (df["contract_risk"].value_counts(normalize=True) * 100).reset_index(); risk_dist.columns = ["Risk", "Dist"]
+    c4.plotly_chart(px.bar(risk_dist, x="Risk", y="Dist", text_auto=".1f", title="Contract Risk Distribution (%)"), use_container_width=True)
 
 # ============================================================
-# DASHBOARD 2: PERFORMANCE FITNESS
+# DASHBOARD 2: PERFORMANCE FITNESS (4 Charts Restored)
 # ============================================================
 elif dashboard == "Performance Fitness Overview":
     st.title("🏃 Performance Fitness Overview")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Goals per Match", f"{(df['goals_scored'].sum()/df['matches_played'].sum()):.2f}")
-    col2.metric("Avg Pass Accuracy", f"{df['pass_accuracy'].mean():.1f}%")
-    col3.metric("Injury Rate", f"{df['injury_prone'].mean()*100:.1f}%")
-    col4.metric("Fitness Score", f"{(df['stamina'].mean()+df['agility'].mean()):.1f}")
-    
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Goals per Match", f"{(df['goals_scored'].sum()/df['matches_played'].sum()):.2f}")
+    m2.metric("Avg Pass Accuracy", f"{df['pass_accuracy'].mean():.1f}%")
+    m3.metric("Injury Rate", f"{df['injury_prone'].mean()*100:.1f}%")
+    m4.metric("Fitness Score", f"{(df['stamina'].mean()+df['agility'].mean()):.1f}")
+
     st.markdown("---")
-    
     c1, c2 = st.columns(2)
-    
-    # Line Chart: Matches Distribution
-    matches = df["matches_played"].value_counts().sort_index().reset_index()
-    matches.columns = ["Matches", "Count"]
-    c1.plotly_chart(px.line(matches, x="Matches", y="Count", title="Matches Played Distribution", markers=True), use_container_width=True)
-    
-    # Fix for Pie Chart
-    injury_dist = df["injury_label"].value_counts().reset_index()
-    injury_dist.columns = ["Status", "Count"]
-    c2.plotly_chart(px.pie(injury_dist, names="Status", values="Count", title="Availability Status"), use_container_width=True)
+    # Chart 1: Goals by Position
+    goals_pos = df.groupby("position")["goals_scored"].mean().reset_index()
+    c1.plotly_chart(px.bar(goals_pos, x="position", y="goals_scored", text_auto=".2f", title="Avg Goals by Position"), use_container_width=True)
+    # Chart 2: Assists by Pass Accuracy
+    df["acc_band"] = pd.cut(df["pass_accuracy"], bins=[50, 70, 85, 100], labels=["Low", "Medium", "High"])
+    acc_data = df.groupby("acc_band")["assists"].mean().reset_index()
+    c2.plotly_chart(px.bar(acc_data, x="acc_band", y="assists", text_auto=".2f", title="Avg Assists by Accuracy Band"), use_container_width=True)
+
+    c3, c4 = st.columns(2)
+    # Chart 3: Availability
+    inj_dist = df["injury_label"].value_counts().reset_index(); inj_dist.columns = ["Status", "Count"]
+    c3.plotly_chart(px.pie(inj_dist, names="Status", values="Count", title="Player Availability"), use_container_width=True)
+    # Chart 4: Matches Played Distribution
+    match_dist = df["matches_played"].value_counts().sort_index().reset_index(); match_dist.columns = ["Matches", "Count"]
+    c4.plotly_chart(px.line(match_dist, x="Matches", y="Count", markers=True, title="Matches Played Distribution"), use_container_width=True)
 
 # ============================================================
-# DASHBOARD 3: SCOUTING INSIGHTS
+# DASHBOARD 3: SCOUTING (4 Charts Restored)
 # ============================================================
 elif dashboard == "Talent Scouting Insights":
     st.title("🔎 Talent Scouting Insights")
-    
+    m1, m2, m3, m4 = st.columns(4)
+    young = df[df["age"] <= 26]
+    m1.metric("Star Potential %", f"{young['star_player'].mean()*100:.1f}%")
+    m2.metric("Avg Sprint Speed", f"{df['sprint_speed'].mean():.1f}")
+    m3.metric("Avg Jump Height", f"{df['jump_height_cm'].mean():.1f}")
+    m4.metric("Breakout Index", f"{(len(df[df['star_player']==0])/len(df)*100):.1f}%")
+
+    st.markdown("---")
     c1, c2 = st.columns(2)
-    
-    # Star Yield by Nationality
-    stars_only = df[df["star_player"] == 1]
-    nat = stars_only["nationality"].value_counts(normalize=True).reset_index()
-    nat.columns = ["Nationality", "Share"]
-    c1.plotly_chart(px.bar(nat, x="Nationality", y="Share", title="Star Yield by Nationality (%)"), use_container_width=True)
-    
-    # Age vs Goals
-    age_goal = df.groupby("age")["goals_scored"].mean().reset_index()
-    c2.plotly_chart(px.line(age_goal, x="age", y="goals_scored", title="Age vs Average Goals", markers=True), use_container_width=True)
+    # Chart 1: Nationality Yield
+    nat = (df[df["star_player"]==1]["nationality"].value_counts(normalize=True)*100).reset_index(); nat.columns = ["Nation", "Share"]
+    c1.plotly_chart(px.bar(nat, x="Nation", y="Share", text_auto=".1f", title="Star Yield by Nationality (%)"), use_container_width=True)
+    # Chart 2: Experience vs Star Prob
+    exp_s = (df.groupby("experience_level")["star_player"].mean()*100).reset_index(); exp_s.columns = ["Exp", "Prob"]
+    c2.plotly_chart(px.bar(exp_s, x="Exp", y="Prob", text_auto=".1f", title="Exp Level vs Star Prob (%)"), use_container_width=True)
+
+    c3, c4 = st.columns(2)
+    # Chart 3: Age vs Goals
+    age_g = df.groupby("age")["goals_scored"].mean().reset_index()
+    c3.plotly_chart(px.line(age_g, x="age", y="goals_scored", markers=True, title="Age vs Average Goals"), use_container_width=True)
+    # Chart 4: Market Value Distribution
+    df["v_band"] = pd.cut(df["market_value_million"], bins=[0,10,30,60,200], labels=["Low", "Medium", "High", "Elite"])
+    v_dist = (df["v_band"].value_counts(normalize=True)*100).reset_index(); v_dist.columns = ["Band", "Dist"]
+    c4.plotly_chart(px.bar(v_dist, x="Band", y="Dist", text_auto=".1f", title="Market Value Distribution (%)"), use_container_width=True)
 
 # ============================================================
 # DASHBOARD 4: ML PREDICTOR
 # ============================================================
-elif dashboard == "Star Player Predictor (ML)":
-    st.title("🏆 Star Player Status Predictor")
-    st.info("Input metrics to run the Gradient Boosting Model.")
-
-    best_gb_model, scaler = load_ml_model()
-
-    if best_gb_model is None:
-        st.error("Model files not found. Upload 'SportsProFC_Model.pkl' and 'SportsProFC_Scaler.pkl'.")
-    else:
-        with st.form("ml_form"):
+else:
+    st.title("🏆 Star Player Predictor")
+    model, scaler = load_ml_model()
+    if model:
+        with st.form("ml"):
             col1, col2 = st.columns(2)
             with col1:
-                minutes_played = st.number_input("Minutes Played", value=1500)
-                goals_scored = st.number_input("Goals Scored", value=10)
-                stamina = st.slider("Stamina", 0, 100, 75)
-                assists = st.number_input("Assists", value=5)
-                pass_accuracy = st.slider("Pass Accuracy %", 0, 100, 80)
+                min_p = st.number_input("Minutes Played", value=1500); goals = st.number_input("Goals", value=10)
+                stam = st.slider("Stamina", 0, 100, 75); ass = st.number_input("Assists", value=5); pass_a = st.slider("Pass %", 0, 100, 80)
             with col2:
-                market_value = st.number_input("Market Value (M)", value=25.0)
-                strength = st.slider("Strength", 0, 100, 70)
-                sprint_speed = st.slider("Sprint Speed", 0, 100, 75)
-                agility = st.slider("Agility", 0, 100, 70)
-                matches_played = st.number_input("Matches Played", value=20)
-            
-            submit = st.form_submit_button("Analyze Athlete")
-
-        if submit:
-            # Prepare all 24 columns for the Scaler
-            feats = {
-                'age': 25, 'height_cm': 180, 'weight_kg': 75, 'nationality': 0, 'position': 0,
-                'sprint_speed': sprint_speed, 'stamina': stamina, 'strength': strength, 
-                'agility': agility, 'jump_height_cm': 50, 'injury_prone': 0, 
-                'matches_played': matches_played, 'goals_scored': goals_scored, 'assists': assists,
-                'yellow_cards': 0, 'red_cards': 0, 'minutes_played': minutes_played, 
-                'pass_accuracy': pass_accuracy, 'tackles': 0, 'saves': 0, 'team': 0, 
-                'contract_years': 2, 'market_value_million': market_value, 'experience_level': 5
-            }
-            order = ['age', 'height_cm', 'weight_kg', 'nationality', 'position', 'sprint_speed', 'stamina', 'strength', 'agility', 'jump_height_cm', 'injury_prone', 'matches_played', 'goals_scored', 'assists', 'yellow_cards', 'red_cards', 'minutes_played', 'pass_accuracy', 'tackles', 'saves', 'team', 'contract_years', 'market_value_million', 'experience_level']
-            
-            input_df = pd.DataFrame([feats])[order]
-            
-            try:
-                scaled = scaler.transform(input_df)
-                pred = best_gb_model.predict(scaled)
-                prob = np.max(best_gb_model.predict_proba(scaled)) * 100
-                
-                if pred[0] == 1:
-                    st.balloons()
-                    st.success(f"### Result: STAR PLAYER ✅ ({prob:.1f}% confidence)")
-                else:
-                    st.error(f"### Result: REGULAR PLAYER ❌ ({prob:.1f}% confidence)")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-# ---------------------------------------------------
-# FOOTER
-# ---------------------------------------------------
-st.markdown("---")
-st.caption("Sports Analytics Platform v2.1 | Built with Streamlit")
+                mval = st.number_input("Value (M)", value=25.0); stre = st.slider("Strength", 0, 100, 70)
+                spr = st.slider("Sprint", 0, 100, 75); agi = st.slider("Agility", 0, 100, 70); mat = st.number_input("Matches", value=20)
+            if st.form_submit_button("Predict"):
+                # All 24 columns for model
+                row = [25, 180, 75, 0, 0, spr, stam, stre, agi, 50, 0, mat, goals, ass, 0, 0, min_p, pass_a, 0, 0, 0, 2, mval, 5]
+                scaled = scaler.transform(pd.DataFrame([row], columns=['age', 'height_cm', 'weight_kg', 'nationality', 'position', 'sprint_speed', 'stamina', 'strength', 'agility', 'jump_height_cm', 'injury_prone', 'matches_played', 'goals_scored', 'assists', 'yellow_cards', 'red_cards', 'minutes_played', 'pass_accuracy', 'tackles', 'saves', 'team', 'contract_years', 'market_value_million', 'experience_level']))
+                res = model.predict(scaled)[0]
+                st.divider()
+                if res == 1: st.success("Result: STAR PLAYER ✅"); st.balloons()
+                else: st.error("Result: REGULAR PLAYER ❌")
