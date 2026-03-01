@@ -5,6 +5,28 @@ import joblib
 import numpy as np
 
 # ---------------------------------------------------
+# LOGIN SYSTEM
+# ---------------------------------------------------
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
+def login():
+    st.markdown("<h1 style='text-align: center;'>🏆 SportsProFC Login</h1>", unsafe_allow_html=True)
+    with st.container():
+        user = st.text_input("Username")
+        pw = st.text_input("Password", type="password")
+        if st.button("Login"):
+            if user == "coach" and pw == "coach@123":
+                st.session_state.logged_in = True
+                st.rerun()
+            else:
+                st.error("Invalid credentials. Please try again.")
+
+if not st.session_state.logged_in:
+    login()
+    st.stop()
+
+# ---------------------------------------------------
 # PAGE CONFIG & PROFESSIONAL THEME (CSS)
 # ---------------------------------------------------
 st.set_page_config(page_title="SportsProFC | Executive Analytics", page_icon="⚽", layout="wide")
@@ -214,3 +236,4 @@ else:
                     st.balloons()
                 else: 
                     st.error("❌ CLASSIFIED AS: **REGULAR SQUAD PLAYER**")
+
