@@ -4,13 +4,12 @@ import pandas as pd
 import numpy as np
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="SportsProFC Analytics", page_icon="⚽", layout="centered")
+st.set_page_config(page_title="SportsProFC Analytics", page_icon="⚽")
 
 # --- LOAD ASSETS ---
-# Using cache_resource so the model doesn't reload on every click
 @st.cache_resource
 def load_model_objects():
-    # Ensure these files are in your GitHub root folder
+    # These must match the filenames you saved in your notebook
     model = joblib.load('SportsProFC_Model.pkl')
     scaler = joblib.load('SportsProFC_Scaler.pkl')
     return model, scaler
@@ -18,70 +17,59 @@ def load_model_objects():
 try:
     best_gb_model, scaler = load_model_objects()
 except Exception as e:
-    st.error(f"Error loading model files. Make sure .pkl files are in the repo. Error: {e}")
+    st.error(f"Error loading model: {e}")
     st.stop()
 
 # --- USER INTERFACE ---
 st.title("🏆 SportsProFC Performance Predictor")
-st.markdown("""
-This app predicts athlete success based on training and performance metrics 
-using the **Gradient Boosting** model trained in our initiative.
-""")
+st.markdown("Enter athlete data to predict successful performance output.")
 
 with st.form("input_form"):
-    st.subheader("Athlete Metrics")
-    
     col1, col2 = st.columns(2)
     
     with col1:
         age = st.number_input("Age", min_value=15, max_value=50, value=25)
-        training_hours = st.number_input("Weekly Training Hours", min_value=1, max_value=100, value=20)
-        performance_score = st.slider("Current Performance Score", 0, 100, 70)
+        agility = st.slider("Agility Score", 0, 100, 70)
+        assists = st.number_input("Recent Assists", value=5)
+        training_hours = st.number_input("Weekly Training Hours", value=20)
 
     with col2:
-        years_exp = st.number_input("Years of Experience", min_value=0, max_value=30, value=5)
-        recovery_rate = st.slider("Recovery Rate (%)", 0, 100, 85)
-        intensity = st.selectbox("Training Intensity Level", options=[1, 2, 3], format_func=lambda x: ["Low", "Medium", "High"][x-1])
+        contract_years = st.number_input("Contract Years Left", value=2)
+        experience_level = st.slider("Experience Level (1-10)", 1, 10, 5)
+        recovery_rate = st.slider("Recovery Rate (%)", 0, 100, 80)
+        intensity = st.selectbox("Intensity", [1, 2, 3], format_func=lambda x: ["Low", "Medium", "High"][x-1])
 
-    submit_button = st.form_submit_button("Analyze Performance")
+    submit_button = st.form_submit_button("Predict Result")
 
-# --- PREDICTION LOGIC ---
 if submit_button:
-    # IMPORTANT: The dictionary keys MUST match the column names from your notebook exactly
+    # 1. Map inputs to EXACT lowercase names used in training
     input_dict = {
-        'Age': age,
-        'Training_Hours': training_hours,
-        'Performance_Score': performance_score,
-        'Years_Experience': years_exp,
-        'Recovery_Rate': recovery_rate,
-        'Intensity': intensity
+        'age': age,
+        'agility': agility,
+        'assists': assists,
+        'contract_years': contract_years,
+        'experience_level': experience_level,
+        'training_hours': training_hours,
+        'recovery_rate': recovery_rate,
+        'intensity': intensity
     }
     
-    # Convert to DataFrame
+    # 2. Create DataFrame
     input_df = pd.DataFrame([input_dict])
 
-    # 1. Scale the data using the loaded scaler
     try:
+        # 3. Scale the data (Scaler expects same feature names as fit time)
         input_scaled = scaler.transform(input_df)
 
-        # 2. Make Prediction
+        # 4. Make Prediction
         prediction = best_gb_model.predict(input_scaled)
-        probability = best_gb_model.predict_proba(input_scaled)
+        prob = best_gb_model.predict_proba(input_scaled)
 
-        # 3. Display Results
         st.divider()
-        confidence = np.max(probability) * 100
-
         if prediction[0] == 1:
-            st.balloons()
-            st.success(f"### Prediction: **SUCCESSFUL PERFORMANCE** ✅")
-            st.write(f"The model is **{confidence:.2f}%** confident in this athlete's success.")
+            st.success(f"### Result: SUCCESS ✅ ({np.max(prob)*100:.1f}% confidence)")
         else:
-            st.error(f"### Prediction: **PERFORMANCE BELOW TARGET** ❌")
-            st.write(f"The model is **{confidence:.2f}%** confident this athlete may need more training.")
-
+            st.error(f"### Result: TARGET NOT MET ❌ ({np.max(prob)*100:.1f}% confidence)")
+            
     except Exception as e:
-        st.error(f"An error occurred during prediction: {e}")
-
-# --- FOOTER ---
-st.sidebar.info("Developed for the SportsProFC Analytics Initiative.")
+        st.error(f"Prediction Error: {e}")
