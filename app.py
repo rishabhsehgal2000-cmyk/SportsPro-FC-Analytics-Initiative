@@ -37,8 +37,22 @@ st.markdown("""
     /* Main Background */
     .stApp { background-color: #f8f9fa; }
     
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] { background-color: #0e1117; color: white; }
+    /* Sidebar Styling - White Background with Black Text */
+    [data-testid="stSidebar"] { 
+        background-color: #ffffff !important; 
+        border-right: 1px solid #e9ecef;
+    }
+    
+    /* Force all text in sidebar to Black */
+    [data-testid="stSidebar"] .stText, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3 {
+        color: #000000 !important;
+        font-weight: 500;
+    }
     
     /* Card-like styling for metrics */
     div[data-testid="stMetricValue"] { font-size: 28px; color: #1f3b4d; font-weight: 700; }
@@ -236,6 +250,7 @@ else:
                     st.balloons()
                 else: 
                     st.error("❌ CLASSIFIED AS: **REGULAR SQUAD PLAYER**")
+
 
 
 
