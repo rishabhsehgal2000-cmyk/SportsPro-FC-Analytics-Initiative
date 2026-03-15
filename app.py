@@ -138,9 +138,8 @@ if dashboard == "Squad Investment":
     
     # Custom Styled Metrics
     m1, m2, m3, m4 = st.columns(4)
-    total_market_value = df["market_value_million"].sum()
-
-    with m1: st.metric("Market Value", f"${total_market_value:,.1f}M")
+    total_market_value_billion = df["market_value_million"].sum() / 1000
+    with m1: st.metric("Market Value", f"${total_market_value_billion:,.1f}B")
     with m2: st.metric("Star Ratio", f"{df['star_player'].mean()*100:.1f}%")
     with m3: st.metric("Avg Contract", f"{df['contract_years'].mean():.1f} Yrs")
     with m4: st.metric("Avg Age", f"{df['age'].mean():.1f}")
