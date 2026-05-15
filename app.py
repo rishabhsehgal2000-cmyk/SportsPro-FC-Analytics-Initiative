@@ -202,7 +202,17 @@ elif dashboard == "Scouting Insights":
     m1.metric("U26 Star Yield", f"{young['star_player'].mean()*100:.1f}%")
     m2.metric("Avg Sprint", f"{df['sprint_speed'].mean():.1f}km/hr")
     m3.metric("Avg Vertical Jump", f"{df['jump_height_cm'].mean():.1f}cm")
-    m4.metric("Breakout Index", f"{(len(df[df['star_player']==0])/len(df)*100):.1f}%")
+   median_value = df['market_value'].median()
+    median_matches = df['matches_played'].median()
+    
+    hidden_gems = df[
+        (df['star_player'] == 0) & 
+        (df['market_value'] <= median_value) & 
+        (df['matches_played'] >= median_matches)
+    ]
+    
+    breakout_percentage = (len(hidden_gems) / len(df)) * 100
+    m4.metric("Breakout Index", f"{breakout_percentage:.1f}%")
 
     st.markdown("---")
     c1, c2 = st.columns(2)
