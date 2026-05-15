@@ -202,8 +202,9 @@ elif dashboard == "Scouting Insights":
     m1.metric("U26 Star Yield", f"{young['star_player'].mean()*100:.1f}%")
     m2.metric("Avg Sprint", f"{df['sprint_speed'].mean():.1f}km/hr")
     m3.metric("Avg Vertical Jump", f"{df['jump_height_cm'].mean():.1f}cm")
-    m4.metric("Breakout Index", f"{(len(df[df['star_player']==0])/len(df)*100):.1f}%")
-
+    breakout = df[(df["star_player"] == 1) & (df["market_value_million"] < 30)]
+    breakout_index = (len(breakout) / len(df[df["star_player"] == 1]) * 100)
+    m4.metric("Breakout Index", f"{breakout_index:.1f}%")
 
     st.markdown("---")
     c1, c2 = st.columns(2)
