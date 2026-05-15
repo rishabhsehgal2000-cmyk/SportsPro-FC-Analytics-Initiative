@@ -202,10 +202,19 @@ elif dashboard == "Scouting Insights":
     m1.metric("U26 Star Yield", f"{young['star_player'].mean()*100:.1f}%")
     m2.metric("Avg Sprint", f"{df['sprint_speed'].mean():.1f}km/hr")
     m3.metric("Avg Vertical Jump", f"{df['jump_height_cm'].mean():.1f}cm")
-    breakout = df[(df["star_player"] == 1) & (df["market_value_million"] < 30)]
-    breakout_index = (len(breakout) / len(df[df["star_player"] == 1]) * 100)
-    m4.metric("Breakout Index", f"{breakout_index:.1f}%")
+    star_avg_minutes = df[df["star_player"] == 1]["minutes_played"].median()
+    star_avg_matches = df[df["star_player"] == 1]["matches_played"].median()
 
+    breakout = df[
+    (df["star_player"] == 0) &
+    (df["minutes_played"] >= star_avg_minutes) &
+    (df["matches_played"] >= star_avg_matches)
+    ]
+
+    breakout_index = (len(breakout) / len(df) * 100)
+    m4.metric("Breakout Index", f"{breakout_index:.1f}%", delta=f"{len(breakout)} hidden gems")
+
+    
     st.markdown("---")
     c1, c2 = st.columns(2)
     nat = (df[df["star_player"]==1]["nationality"].value_counts(normalize=True)*100).reset_index(); nat.columns = ["Nation", "Share"]
